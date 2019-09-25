@@ -113,7 +113,8 @@ coords <- st_coordinates(az_center)
 
 
 getData('SRTM',lon=coords[1],lat=coords[2],
-        path='data')
+        path='data',download=TRUE)
+
 
 ```
 
