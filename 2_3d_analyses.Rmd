@@ -3,6 +3,8 @@ title: "Terrain analyses and rayshader for 3d plots"
 author: "Matthew Ross"
 date: "9/25/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -25,7 +27,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 
 topo_change <- st_read('data/topo_change/topo_change_polygons.shp')
-
 #Checkout the column names
 #names(topo_change)
 
@@ -140,7 +141,7 @@ aoi <- extent(az_mine_2km)
 
 #Crop after to area of interest
 mine_after <- crop(az_raster_after,aoi)
-
+mapview(mine_after)
 #Crop before to area of interest (need to also reproject)
 mine_before <- crop(az_raster_before %>%
                       projectRaster(.,crs=projection(mine_after)),
@@ -163,7 +164,9 @@ mines[[3]] <- mines[[1]] - mines[[2]]
 #Rename raster layers
 names(mines) <- c('Pre_mining','Post_mining','DoD')
 
+
 plot(mines)
+names(mines)
 ```
 
 
@@ -175,6 +178,9 @@ All data for this section should be the data clipped to the mining area
 
 ```{r}
 
+slope_after <- terrain(mine_after_same, opt = "slope", unit = "degrees")
+mapview(slope_after)
+
 ```
 
 
@@ -182,6 +188,16 @@ All data for this section should be the data clipped to the mining area
 
 ```{r}
 
+slope_before <- terrain(mines[[1]], opt = "slope", unit = "degrees")
+mapview(mines[[1]])
+plot(slope_before)
+
+slope_difference <- terrain(mines[[3]], opt = "slope", unit = "degrees")
+plot(slope_difference)
+
+slopes <- brick(slope_before, slope_after, slope_difference)
+names(slopes) <- c("PreMine", "PostMine", "Difference")
+plot(slopes)
 ```
 
 
@@ -189,12 +205,36 @@ All data for this section should be the data clipped to the mining area
 
 ```{r}
 
+View(mine_before_same)
+
+pre_matrix <- matrix(raster::extract(mine_before_same,
+                    raster::extent(mine_before_same),buffer=500),
+                    nrow=ncol(mine_before_same), ncol=nrow(mine_before_same))
+
+pre_matrix %>%
+  sphere_shade(texture = 'desert') %>%
+  add_water(detect_water(pre_matrix),color='desert') %>%
+  add_shadow(ray_shade(pre_matrix,zscale=2),0.5) %>%
+  add_shadow(ambient_shade(pre_matrix)) %>%
+  plot_3d(pre_matrix,zscale=10,fov = 0,theta=135,zoom=0.75)
+
 ```
 
 
 ## 4) Use rayshader to make 3d plot of the post-mining mine
 
 ```{r}
+
+post_matrix <- matrix(raster::extract(mine_after_same,
+                    raster::extent(mine_after_same),buffer=500),
+                    nrow=ncol(mine_after_same), ncol=nrow(mine_after_same))
+
+post_matrix %>%
+  sphere_shade(texture = 'desert') %>%
+  add_water(detect_water(post_matrix),color='desert') %>%
+  add_shadow(ray_shade(post_matrix,zscale=2),0.5) %>%
+  add_shadow(ambient_shade(post_matrix)) %>%
+  plot_3d(post_matrix,zscale=10,fov = 0,theta=135,zoom=0.75)
 
 ```
 
