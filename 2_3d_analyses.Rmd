@@ -210,7 +210,7 @@ View(mine_before_same)
 pre_matrix <- matrix(raster::extract(mine_before_same,
                     raster::extent(mine_before_same),buffer=500),
                     nrow=ncol(mine_before_same), ncol=nrow(mine_before_same))
-
+dim(pre_matrix)
 pre_matrix %>%
   sphere_shade(texture = 'desert') %>%
   add_water(detect_water(pre_matrix),color='desert') %>%
