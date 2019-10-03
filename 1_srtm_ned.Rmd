@@ -1,8 +1,10 @@
 ---
 title: "Topographic Change caused by People"
-author: "Matthew Ross"
+author: "Matthew Ross &(John Kemper)"
 date: "9/23/2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -28,6 +30,11 @@ Analysis background can be found here: https://www.usgs.gov/land-resources/eros/
 
 
 ```{r, eval=F}
+
+getwd()
+setwd("C:/Users/John/Documents/WR674/mining_impacts_to_elevation/")
+getwd()
+
 #Create a new folder 
 dir.create('data')
 
@@ -69,6 +76,9 @@ mapview(biggest_area)
 az_mine <- biggest_area %>%
   filter(QUADNAME == 'esperanza_mill_AZ')
 
+summary(az_mine)
+str(az_mine)
+
 #Check that it is the right site
 mapview(az_mine)
 ```
@@ -87,9 +97,9 @@ mapview(az_mine)
 az_raster_before <- get_elev_raster(az_mine,z=12)
 
 #Look at the structure of the data
-#str(az_raster)
+str(az_raster)
 
-#Summary of the data
+##Summary of the data
 #summary(az_raster)
 
 plot(az_raster_before)
@@ -131,12 +141,12 @@ az_raster_after <- raster('data/srtm_14_06.tif')
 
 ```{r}
 #Check resolution of rasters
-# res(az_raster_after)
-# res(az_raster_before)
+res(az_raster_after)
+res(az_raster_before)
 
 #Check the projection
-# projection(az_raster_after)
-# projection(az_raster_before)
+projection(az_raster_after)
+projection(az_raster_before)
 
 
 #Reproject small raster to larger raster projection
@@ -172,8 +182,13 @@ plot(dem_diff)
 You may want to check out the command maxValue and minValue
 
 ```{r}
+?maxValue
 
-#YOUR CODE HERE
+maxValue(dem_diff)
+minValue(dem_diff)
+
+ 
+### Minimum change is -73 m and max chane is 38.4 m 
 ```
 
 
@@ -194,8 +209,18 @@ elevation change?
 
 ```{r}
 
-#Your code here
+#?st_buffer
+#View(az_mine)
 
+#### Buffer az_mine area by 5 km 
+
+az_mine_buff<- st_buffer(az_mine, 5000)
+
+
+
+
+#mapview(az_mine)
+#mapview(az_mine_buff)
 
 ```
 
@@ -207,6 +232,12 @@ same projection as the dem_diff raster dataset
 hint: you may want to explore st_crs to help you here
 
 ```{r}
+st_crs(dem_diff)
+
+
+###reprohected buffered az_mine dem to match the dem_diff projection
+az_mine_buff_reproj <- az_mine_buff %>%
+  st_transform(4326)
 
 ```
 
@@ -218,13 +249,38 @@ hint: look at the mask command and try to understand what
 the inverse option does
 
 ```{r}
-#Your code here
+
+?mask
+
+
+####mask the dem to the area outside the mine
+dem_diff_nomine <- mask(dem_diff, az_mine_buff_reproj, inverse = TRUE)
+
+plot(dem_diff_nomine)
+
 ```
 
 
 ### 2d) Use the summary command to look at the summary of
 differences between these two DEMs in areas where there has
 been no mining
+
+
+```{r}
+
+###looka at differences in elevation areas
+summary(dem_diff_buff)
+plot(dem_diff_buff)
+
+###Max diff: 33.2
+###Min diff: 5-51.8
+####Median -1.12 
+###Suggests that there is ~1 m  of difference between the two DEMs with some autliers in certain areas
+
+```
+
+
+
 
 
 ## 3) What does the shape of the "error" distribution look like
@@ -241,6 +297,19 @@ USGS az_mine dataset
 
 ```{r}
 
+#st_crs(az_mine)
+#st_crs(dem_diff)
+#mapview(az_mine)
+
+##Reproject mine dataset to match dem_diff dataset
+az_mine_reproj <- az_mine %>%
+  st_transform(4326)
+#mapview(dem_diff)
+
+###Mask dem to area within the mine
+dem_diff_mine <- mask(dem_diff, az_mine_reproj, inverse = FALSE)
+plot(dem_diff_mine)
+
 ```
 
 
@@ -250,6 +319,10 @@ Label these vectors as `unmined_dem` and `mined_dem`.
 
 ```{r}
 
+###Extract elevation areas
+
+unmined_dem <- getValues(dem_diff_nomine)
+mined_dem <- getValues(dem_diff_mine)
 
 
 ```
@@ -265,7 +338,19 @@ unmined_type <- rep('unmined',length(unmined_dem))
 mined_type <- rep('mined',length(mined_dem))
 mined_table <- tibble(dem_values = c(unmined_dem,mined_dem),
                       type = c(unmined_type,mined_type)) 
-                      
-                    
+
+View(mined_table)
+
+
+###PLot differences in DEMs for both the mined and unmined areas                      
+mined_table %>%
+  ggplot() +
+  geom_density(aes(x = dem_values, linetype = type), size = 1) +
+  theme_few() +
+  scale_linetype_manual(values = c("solid", "dotted"))
+  
+
+###The error distribution within the unmined area looks normal, i.e. difference in DEMs are normally distributed in the unmined region. DEM difference is right skewed in the mined region (which makes sense, because of the mining)
+  
 ```
 
